@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+sdist/
+wheels/
+venv/
+env/
+.venv/
+_venv/
+*.spec
+
+# VS Code
+.vscode/
+
+model/**
+!model/
+logs/
+cache/
+
+_secret_auth_.json
+
+data/dataset/Chase/database/**
+data/dataset/Chase/prepare/**
+data/dataset/Spider/database/**
+data/dataset/Spider/prepare/**
+
+!data/dataset/Chase/database/
+!data/dataset/Chase/prepare/
+!data/dataset/Spider/database/
+!data/dataset/Spider/prepare/

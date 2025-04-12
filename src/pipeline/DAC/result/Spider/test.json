@@ -1,0 +1,782 @@
+[
+    {
+        "db_id": "concert_singer",
+        "question": "how many singers do we have ?",
+        "query": "SELECT COUNT ( * ) FROM singer",
+        "alignment": {
+            "gold": [
+                {
+                    "token": "how",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "many",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "singers",
+                    "schema": "singer",
+                    "type": "tbl"
+                },
+                {
+                    "token": "do",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "we",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "have",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "?",
+                    "schema": null,
+                    "type": null
+                }
+            ]
+        }
+    },
+    {
+        "db_id": "concert_singer",
+        "question": "what is the total number of singers ?",
+        "query": "SELECT COUNT ( * ) FROM singer",
+        "alignment": {
+            "gold": [
+                {
+                    "token": "what",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "is",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "the",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "total",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "number",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "of",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "singers",
+                    "schema": "singer",
+                    "type": "tbl"
+                },
+                {
+                    "token": "?",
+                    "schema": null,
+                    "type": null
+                }
+            ]
+        }
+    },
+    {
+        "db_id": "concert_singer",
+        "question": "show name , country , age for all singers ordered by age from the oldest to the youngest .",
+        "query": "SELECT singer.name , singer.country , singer.age FROM singer ORDER BY singer.age DESC",
+        "alignment": {
+            "gold": [
+                {
+                    "token": "show",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "name",
+                    "schema": "singer.Name",
+                    "type": "col"
+                },
+                {
+                    "token": ",",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "country",
+                    "schema": "singer.Country",
+                    "type": "col"
+                },
+                {
+                    "token": ",",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "age",
+                    "schema": "singer.Age",
+                    "type": "col"
+                },
+                {
+                    "token": "for",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "all",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "singers",
+                    "schema": "singer",
+                    "type": "tbl"
+                },
+                {
+                    "token": "ordered",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "by",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "age",
+                    "schema": "singer.Age",
+                    "type": "col"
+                },
+                {
+                    "token": "from",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "the",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "oldest",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "to",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "the",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "youngest",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": ".",
+                    "schema": null,
+                    "type": null
+                }
+            ]
+        }
+    },
+    {
+        "db_id": "concert_singer",
+        "question": "what are the names , countries , and ages for every singer in descending order of age ?",
+        "query": "SELECT singer.name , singer.country , singer.age FROM singer ORDER BY singer.age DESC",
+        "alignment": {
+            "gold": [
+                {
+                    "token": "what",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "are",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "the",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "names",
+                    "schema": "singer.Name",
+                    "type": "col"
+                },
+                {
+                    "token": ",",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "countries",
+                    "schema": "singer.Country",
+                    "type": "col"
+                },
+                {
+                    "token": ",",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "and",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "ages",
+                    "schema": "singer.Age",
+                    "type": "col"
+                },
+                {
+                    "token": "for",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "every",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "singer",
+                    "schema": "singer",
+                    "type": "tbl"
+                },
+                {
+                    "token": "in",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "descending",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "order",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "of",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "age",
+                    "schema": "singer.Age",
+                    "type": "col"
+                },
+                {
+                    "token": "?",
+                    "schema": null,
+                    "type": null
+                }
+            ]
+        }
+    },
+    {
+        "db_id": "concert_singer",
+        "question": "what is the average , minimum , and maximum age of all singers from france ?",
+        "query": "SELECT AVG ( singer.age ) , MIN ( singer.age ) , MAX ( singer.age ) FROM singer WHERE singer.country = \"France\"",
+        "alignment": {
+            "gold": [
+                {
+                    "token": "what",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "is",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "the",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "average",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": ",",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "minimum",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": ",",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "and",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "maximum",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "age",
+                    "schema": "singer.Age",
+                    "type": "col"
+                },
+                {
+                    "token": "of",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "all",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "singers",
+                    "schema": "singer",
+                    "type": "tbl"
+                },
+                {
+                    "token": "from",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "france",
+                    "schema": "singer.Country",
+                    "type": "val"
+                },
+                {
+                    "token": "?",
+                    "schema": null,
+                    "type": null
+                }
+            ]
+        }
+    },
+    {
+        "db_id": "concert_singer",
+        "question": "what is the average , minimum , and maximum age for all french singers ?",
+        "query": "SELECT AVG ( singer.age ) , MIN ( singer.age ) , MAX ( singer.age ) FROM singer WHERE singer.country = \"France\"",
+        "alignment": {
+            "gold": [
+                {
+                    "token": "what",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "is",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "the",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "average",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": ",",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "minimum",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": ",",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "and",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "maximum",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "age",
+                    "schema": "singer.Age",
+                    "type": "col"
+                },
+                {
+                    "token": "for",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "all",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "french",
+                    "schema": "singer.Country",
+                    "type": "val"
+                },
+                {
+                    "token": "singers",
+                    "schema": "singer",
+                    "type": "tbl"
+                },
+                {
+                    "token": "?",
+                    "schema": null,
+                    "type": null
+                }
+            ]
+        }
+    },
+    {
+        "db_id": "concert_singer",
+        "question": "show the name and the release year of the song by the youngest singer .",
+        "query": "SELECT singer.song_name , singer.song_release_year FROM singer ORDER BY singer.age ASC LIMIT 1",
+        "alignment": {
+            "gold": [
+                {
+                    "token": "show",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "the",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "name",
+                    "schema": "singer.Song_Name",
+                    "type": "col"
+                },
+                {
+                    "token": "and",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "the",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "release",
+                    "schema": "singer.Song_release_year",
+                    "type": "col"
+                },
+                {
+                    "token": "year",
+                    "schema": "singer.Song_release_year",
+                    "type": "col"
+                },
+                {
+                    "token": "of",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "the",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "song",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "by",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "the",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "youngest",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "singer",
+                    "schema": "singer",
+                    "type": "tbl"
+                },
+                {
+                    "token": ".",
+                    "schema": null,
+                    "type": null
+                }
+            ]
+        }
+    },
+    {
+        "db_id": "concert_singer",
+        "question": "what are the names and release years for all the songs of the youngest singer ?",
+        "query": "SELECT singer.song_name , singer.song_release_year FROM singer ORDER BY singer.age ASC LIMIT 1",
+        "alignment": {
+            "gold": [
+                {
+                    "token": "what",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "are",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "the",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "names",
+                    "schema": "singer.Song_Name",
+                    "type": "col"
+                },
+                {
+                    "token": "and",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "release",
+                    "schema": "singer.Song_release_year",
+                    "type": "col"
+                },
+                {
+                    "token": "years",
+                    "schema": "singer.Song_release_year",
+                    "type": "col"
+                },
+                {
+                    "token": "for",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "all",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "the",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "songs",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "of",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "the",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "youngest",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "singer",
+                    "schema": "singer",
+                    "type": "tbl"
+                },
+                {
+                    "token": "?",
+                    "schema": null,
+                    "type": null
+                }
+            ]
+        }
+    },
+    {
+        "db_id": "concert_singer",
+        "question": "what are all distinct countries where singers above age 20 are from ?",
+        "query": "SELECT DISTINCT singer.country FROM singer WHERE singer.age > 20",
+        "alignment": {
+            "gold": [
+                {
+                    "token": "what",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "are",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "all",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "distinct",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "countries",
+                    "schema": "singer.Country",
+                    "type": "col"
+                },
+                {
+                    "token": "where",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "singers",
+                    "schema": "singer",
+                    "type": "tbl"
+                },
+                {
+                    "token": "above",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "age",
+                    "schema": "singer.Age",
+                    "type": "col"
+                },
+                {
+                    "token": "20",
+                    "schema": "singer.Age",
+                    "type": "val"
+                },
+                {
+                    "token": "are",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "from",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "?",
+                    "schema": null,
+                    "type": null
+                }
+            ]
+        }
+    },
+    {
+        "db_id": "concert_singer",
+        "question": "what are the different countries with singers above age 20 ?",
+        "query": "SELECT DISTINCT singer.country FROM singer WHERE singer.age > 20",
+        "alignment": {
+            "gold": [
+                {
+                    "token": "what",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "are",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "the",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "different",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "countries",
+                    "schema": "singer.Country",
+                    "type": "col"
+                },
+                {
+                    "token": "with",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "singers",
+                    "schema": "singer",
+                    "type": "tbl"
+                },
+                {
+                    "token": "above",
+                    "schema": null,
+                    "type": null
+                },
+                {
+                    "token": "age",
+                    "schema": "singer.Age",
+                    "type": "col"
+                },
+                {
+                    "token": "20",
+                    "schema": "singer.Age",
+                    "type": "val"
+                },
+                {
+                    "token": "?",
+                    "schema": null,
+                    "type": null
+                }
+            ]
+        }
+    }
+]

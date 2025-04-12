@@ -1,0 +1,30 @@
+services:
+  abacus-sql:
+    image: demo-miniconda
+    container_name: abacus-sql-latest
+    volumes:
+      - type: bind
+        source: ./text2sql-demo
+        target: /root/text2sql-demo
+      - type: bind
+        source: /home/kyxu/quantized
+        target: /root/quantized
+      - type: bind
+        source: /home/kyxu/hf_models/SGPT-125M-weightedmean-msmarco-specb-bitfit  # 这个是SGPT-125M-weightedmean-msmarco-specb-bitfit模型
+        target: /root/hf_models/SGPT-125M-weightedmean-msmarco-specb-bitfit
+      - type: bind
+        source: ./nltk_data
+        target: /root/nltk_data
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu] # ./text2sql-demo/utils/stream_generator.py 30:调整最大输入token; 31:调整gpu_memory_utilization
+              device_ids: ["GPU-91f6efb4-29c7-788e-5f61-304b4a413f5f"]
+    shm_size: 24g
+    working_dir: /root/text2sql-demo
+    command: bash slurm/run.sh
+    ports:
+      - "8501:8501"
