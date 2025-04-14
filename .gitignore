@@ -17,8 +17,10 @@ _venv/
 # VS Code
 .vscode/
 
-model/**
-!model/
+model/Qwen2.5-Coder/**
+model/SGPT/**
+!model/Qwen2.5-Coder/.gitkeep
+!model/SGPT/.gitkeep
 logs/
 cache/
 
@@ -29,7 +31,7 @@ data/dataset/Chase/prepare/**
 data/dataset/Spider/database/**
 data/dataset/Spider/prepare/**
 
-!data/dataset/Chase/database/
-!data/dataset/Chase/prepare/
-!data/dataset/Spider/database/
-!data/dataset/Spider/prepare/
+!data/dataset/Chase/database/.gitkeep
+!data/dataset/Chase/prepare/.gitkeep
+!data/dataset/Spider/database/.gitkeep
+!data/dataset/Spider/prepare/.gitkeep
