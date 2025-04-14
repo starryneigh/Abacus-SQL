@@ -45,4 +45,4 @@ To use Abacus-SQL, visit: https://github.com/starryneigh/Abacus-SQL, register yo
     ```
 
 # Credits
-Wordflow is created by [Keyan Xu](https://github.com/starryneigh), [Dingzirui Wang](https://github.com/zirui-HIT/), [Xuanliang Zhang](https://zhxlia.github.io/).
+Wordflow is created by [Keyan Xu](https://github.com/starryneigh), [Dingzirui Wang](https://zirui-HIT.github.io/), [Xuanliang Zhang](https://zhxlia.github.io/).
