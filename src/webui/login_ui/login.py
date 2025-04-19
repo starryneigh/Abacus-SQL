@@ -64,7 +64,7 @@ class __login__:
         self.lottie_url = lottie_url
         self.lang = st.query_params["lang"] if "lang" in st.query_params else "en"
         self.context = text[self.lang]["login"]
-        print(f"当前语言：{self.lang}")
+        # print(f"当前语言：{self.lang}")
 
         self.place = st.empty()
         with self.place:

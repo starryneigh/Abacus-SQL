@@ -236,10 +236,11 @@ class LlamaGenerator(object):
 
         self.model_name_or_path = model_name_or_path
         self.engine_args = AsyncEngineArgs(
+            disable_log_requests=os.getenv("DISABLE_LOG_REQUESTS", "0") == "1",
             model=model_name_or_path,
             dtype="auto" if check_cuda_gt_8() else "float",
-            enforce_eager=True,
-            max_model_len=4000
+            enforce_eager=os.getenv("ENFORCE_EAGER", "0") == "1",
+            max_model_len=int(os.getenv("MAX_MODEL_LEN", 2048)),
         )
         self.llm_engine = AsyncLLMEngine.from_engine_args(self.engine_args)
         self.tokenizer = None

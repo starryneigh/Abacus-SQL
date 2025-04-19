@@ -1,13 +1,13 @@
 import os
 import json
 from transformers import AutoTokenizer
-from .DAC.align import generate_prompt, unpack_single_generation
-from .DAC.debug import prompt_entity_linking, prompt_execution_error, prompt_hallucination
-from .utils.prompt_gen import generate_prompt
-from .utils.database import extract_skeleton
-from .utils.stream_generator import consistency
-from .utils.extract_from_sql import extract_sql_from_text
-from .utils.notice import send_notice
+from .align import generate_prompt, unpack_single_generation
+from .debug import prompt_entity_linking, prompt_execution_error, prompt_hallucination
+from ..utils.prompt_gen import generate_prompt
+from ..utils.database import extract_skeleton
+from ..utils.stream_generator import consistency
+from ..utils.extract_from_sql import extract_sql_from_text
+from ..utils.notice import send_notice
 
 
 def align(prompt_data, stream_handler, tokenizer, mode="ch"):

@@ -2,15 +2,15 @@ import os
 import json
 import sqlite3
 from typing import List, Dict, Any
-from .Fused.converse import pro_converse
-from .Fused.cluster import pro_cluster
-from .Fused.initialize import pro_initialize
-from .Fused.generate_sql import pro_generate_sql
-from .Fused.generate_question import pro_generate_question
-from .Fused.filt import pro_filt
-from .Fused.synthesis import to_demo_file
-from .utils.my_logger import MyLogger
-from .utils.stream_handler import StreamDataHandler
+from .converse import pro_converse
+from .cluster import pro_cluster
+from .initialize import pro_initialize
+from .generate_sql import pro_generate_sql
+from .generate_question import pro_generate_question
+from .filt import pro_filt
+from .synthesis import to_demo_file
+from ..utils.my_logger import MyLogger
+from ..utils.stream_handler import StreamDataHandler
 
 logger = MyLogger("fused", "logs/fused.log")
 
@@ -162,6 +162,7 @@ def yield_process(turn, step, total_turn, total_step):
     num_per_turn = 100 / total_turn
     num_per_step = num_per_turn / total_step
     i = (turn * num_per_turn + step * num_per_step) / 100
+    # print(f"i = {i}")
     yield f"data: {json.dumps({'process': i})}\n\n"
 
 def pro_fused(to_fused_path, cache_path, encoder_name_or_path, table_path, 

@@ -23,6 +23,7 @@ model/SGPT/**
 !model/SGPT/.gitkeep
 logs/
 cache/
+dump/
 
 _secret_auth_.json
 

@@ -64,9 +64,9 @@ def generate_sql_query(question: str, db_map: dict, db_infos: list[dict], messag
     user_type = history[-1].get("type")
     data = {
         "question": question,
-        "history": json.dumps(his_mess),
-        "prompts_user": json.dumps(prompts_user),
-        "db_infos": json.dumps(db_infos),
+        "history": json.dumps(his_mess, ensure_ascii=False),
+        "prompts_user": json.dumps(prompts_user, ensure_ascii=False),
+        "db_infos": json.dumps(db_infos, ensure_ascii=False),
         "cache_path": get_save_dir(user=True, chat=True).replace("\\", "/") if os.name == 'nt' else get_save_dir(user=True, chat=True),
         "demonstration": st.session_state.get("demonstration", False),
         "demo_num": st.session_state.get("demo_num", 5),
@@ -197,7 +197,7 @@ def main_area(files_map: dict):
     history = ChatHistory(lang=lang)
     init_page()
 
-    logger.info(f"uploaded files: {files_map}")
+    # logger.info(f"uploaded files: {files_map}")
 
     if files_map:
         db_infos = []

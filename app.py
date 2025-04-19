@@ -33,8 +33,8 @@ from src.text.front import *
 
 lang = st.query_params.get("lang", "zh")
 content = text[lang]["app"]
-
 logger = MyLogger(name="Text2SQL Demo", log_file="logs/text2sql_demo.log")
+server_thread = None
 model_thread = None
 
 def extract_lang():
@@ -71,6 +71,7 @@ def verify_env():
 def start(): 
     load_dotenv()
     verify_env()
+    global server_thread
     global model_thread
     try:
         from src.pipeline.server import start_server
@@ -90,12 +91,12 @@ def start():
         predict_url = f"http://localhost:{model_port}/predict"
         with open(demos_file, "r", encoding="utf-8") as f:
             demos = json.load(f)
-            print(demos[0])
+            print(f"Loaded {len(demos)} demos from {demos_file}")
         with open(demos_file_en, "r", encoding="utf-8") as f:
             demos_en = json.load(f)
-            print(demos_en[0])
+            print(f"Loaded {len(demos_en)} demos from {demos_file_en}")
         print(f"Starting server at {server_port}...")
-        start_server(
+        server_thread = start_server(
             predict_url,
             demos,
             demos_en,
@@ -200,7 +201,7 @@ def set_lang():
 def main():
     # 启动服务器
     flag = start()
-    print(f"Server started: {flag}")
+    # print(f"Server started: {flag}")
     extract_lang()
 
     side_placeholder = login_sidebar()

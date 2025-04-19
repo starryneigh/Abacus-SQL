@@ -7,134 +7,89 @@ import time
 from typing import Optional
 from ...text.front import text
 
-
-# lang = st.query_params["lang"] if "lang" in st.query_params else "en"
-# context = text[lang]["history"]
-
-def gen_generator(data):
-    if isinstance(data, str):
-        chunk_size = 10
-        for i in range(0, len(data), chunk_size):
-            yield data[i : i + chunk_size]
-            time.sleep(0.000001)
-    else:
-        yield data
-
-
-def get_rationale_sql(prediction):
-    """获取解释性 SQL 语句"""
-    content = prediction.get("content").lower()
-    if "rationale:" in content and "sql:" in content:
-        rationale = content.split("rationale:")[1].split("sql:")[0].strip()
-    else:
-        rationale = content
-    if "rationale" not in prediction:
-        prediction["rationale"] = rationale
-    return prediction
-
 class StreamDataHandler:
     def __init__(self, url, lang="zh"):
-        """
-        初始化 StreamDataHandler 实例
-        :param url: 服务器的 URL，用于发送和接收数据
-        """
         self.url = url
-        self.prediction: Optional[dict] = None  # 用于存储预测结果
-        self.rationale: Optional[str] = None  # 用于存储解释性 SQL 语句
-        
+        self.prediction = None
+        self.rationale = None
         self.lang = lang
         self.context = text[self.lang]["history"]
 
     def stream_data(self, data, files, message_placeholder):
-        """
-        从服务器获取流式数据，并以生成器方式传输数据。
-        """
-        self.prediction = None
-        self.rationale = None
-        response = None
+        """简化后的流式数据处理逻辑"""
+        self.prediction = self.rationale = None
+        
         try:
-            response = requests.post(self.url, data=data, files=files, stream=True)
-            response.raise_for_status()  # 添加响应状态码检查
-
-            with message_placeholder, st.status(self.context["status_text"], expanded=True) as status:
+            with requests.post(self.url, data=data, files=files, stream=True) as response:
+                response.raise_for_status()
                 
-                flag_i = 0
-                for line in response.iter_lines(decode_unicode=True):
-                    if not line.strip():  # 处理空行
-                        continue
-
-                    # 解析 JSON 数据
-                    if line.startswith("data:"):
-                        try:
-                            json_data = line.split(":", 1)[1].strip()
-                            if not json_data:
-                                continue
-                            data_dict = json.loads(json_data)
-                            print(data_dict)
-                        except (json.JSONDecodeError, IndexError) as e:
-                            status.text(f"解析错误: {str(e)}")  # 捕获解析错误并更新状态
-                            continue
-
-                        # 根据不同的键处理不同类型的数据
-                        if "prediction" in data_dict:
-                            self.prediction = data_dict  # 记录总结数据
-                        # elif "rationale" in data_dict:
-                        #     self.rationale = data_dict["rationale"]
-                        elif "generator" in data_dict:
-                            yield data_dict["generator"]  # 流式输出生成器的数据
-                        elif "notice" in data_dict:
-                            status.text(data_dict["notice"])  # 更新状态消息
-                        # elif "debug_flag" in data_dict:
-                        #     if not data_dict["debug_flag"]:
-                        #         status.text(self.context["status_debug_success"])
-                        #     else:
-                        #         flag_i += 1
-                        #         status.text(self.context["status_debug_fail"])
-                        #         yield self.context["status_debug_fail_yield"].format(flag_i=flag_i)
-                        elif data_dict.get("entity_debug_flag", False):
-                            status.text(self.context["status_entity_debug"])
-                            yield self.context["status_entity_debug_yield"]
-                        elif data_dict.get("skeleton_debug_flag", False):
-                            status.text(self.context["status_skeleton_debug"])
-                            yield self.context["status_skeleton_debug_yield"]
-                        elif 'debug_flag' in data_dict:
-                            if data_dict['debug_flag']:
-                                status.text(self.context["status_execution_debug"])
-                                yield self.context["status_execution_debug_yield"]
-                            else: continue
-                        elif "done" in data_dict:
-                            status.text(data_dict["done"])  # 处理完成的状态更新
-                            status.update(
-                                label="Download complete!",
-                                state="complete",
-                                expanded=False,
-                            )
-                            break  # 结束流式处理
-                        elif "error" in data_dict:
-                            raise Exception(data_dict["error"])  # 处理错误消息
-                        else:
-                            status.text(f"未知数据格式: {data_dict}")  # 处理未预料的数据格式
-                    else:
-                        continue
+                with message_placeholder, st.status(self.context["status_text"], expanded=True) as status:
+                    for line in self._process_lines(response, status):
+                        yield line
 
         except requests.RequestException as e:
-            # 捕获网络请求错误
-            with message_placeholder:
-                print(e)
-                st.error(self.context["request_error"])
-            st.stop()
+            self._handle_error(message_placeholder, "request_error", str(e))
         except Exception as e:
-            # 捕获所有其他异常
-            err_msgs = text[self.lang]["error"]
-            err_type = str(e)
-            if err_type in err_msgs:
-                e = err_msgs[err_type]
-            with message_placeholder:
-                st.error(self.context["other_error"].format(e=e))
-            st.stop()
-        finally:
-            if response:
-                response.close()  # 确保响应被正确关闭
+            self._handle_error(message_placeholder, "other_error", str(e))
+
+    def _process_lines(self, response, status):
+        """处理每行流数据"""
+        for line in response.iter_lines(decode_unicode=True):
+            if not line.strip():
+                continue
+
+            if line.startswith("data:"):
+                yield from self._process_data_line(line, status)
+
+    def _process_data_line(self, line, status):
+        """处理单条数据行"""
+        try:
+            data = json.loads(line.split(":", 1)[1].strip())
+        except (json.JSONDecodeError, IndexError) as e:
+            status.text(f"解析错误: {e}")
+            return
+
+        # 数据路由处理
+        if "prediction" in data:
+            self.prediction = data
+        elif "generator" in data:
+            yield data["generator"]
+        elif "notice" in data:
+            status.text(data["notice"])
+        elif data.get("done"):
+            status.update(label="Download complete!", state="complete", expanded=False)
+            raise StopIteration  # 终止流
+        elif data.get("error"):
+            raise Exception(data["error"])
+        else:
+            yield from self._handle_special_flags(data, status)
+
+    def _handle_special_flags(self, data, status):
+        """处理各种调试标志"""
+        flag_handlers = {
+            "entity_debug_flag": ("status_entity_debug", "status_entity_debug_yield"),
+            "skeleton_debug_flag": ("status_skeleton_debug", "status_skeleton_debug_yield"),
+            "debug_flag": ("status_execution_debug", "status_execution_debug_yield")
+        }
+
+        # print(data)
+        for flag, (status_key, yield_key) in flag_handlers.items():
+            # print(data.get(flag))
+            if data.get(flag) is not None:
+                if data.get(flag):
+                    status.text(self.context[status_key])
+                    yield self.context[yield_key]
+                return
+
+        status.text(f"未知数据格式: {data}")
+
+    def _handle_error(self, placeholder, error_key, error_msg):
+        """统一错误处理"""
+        with placeholder:
+            st.error(self.context[error_key].format(
+                e=text[self.lang]["error"].get(error_msg, error_msg)
+            ))
+        st.stop()
 
 
     def get_prediction(self):

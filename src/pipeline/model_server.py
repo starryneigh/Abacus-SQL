@@ -1,10 +1,8 @@
 import time
 import json
-import sys
-import threading
-import uvicorn
 import argparse
-from typing import List, Dict, Any, Tuple
+import copy
+from typing import List
 from fastapi.responses import StreamingResponse
 from fastapi import FastAPI, Request
 from .utils.stream_generator import detect_generator
@@ -39,11 +37,12 @@ def create_model_app(
         prompt: List[str] = data.get("prompt")
         if not prompt:
             return {"error": "prompt is required"}
-        logger.info(prompt)
-        # if "config" in data:
-        #     config = data["config"]
+        logger.debug(prompt)
+        local_config = copy.deepcopy(config)
+        if "config" in data:
+            local_config.update(data["config"])
         request_id = time.monotonic()
-        stream_gen = await generator.generate(prompt, config, request_id)
+        stream_gen = await generator.generate(prompt, local_config, request_id)
 
         async def streaming_resp():
             pre_res = ""

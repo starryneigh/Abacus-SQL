@@ -10,7 +10,7 @@ def get_table_and_question(data_file: str, output_dir: str):
     with open(data_file, "r", encoding='utf-8') as f:
         data = json.load(f)
         tables = data["db_infos"]
-        question = data["user_question"]
+        question = data["question"]
         # question = translate_text(data["user_question"])
         utterance = [{"utterance": question}]
 

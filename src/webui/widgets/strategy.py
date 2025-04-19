@@ -94,6 +94,7 @@ def stream_progress_from_server(response):
                 info = json.loads(data)
                 if "process" in info:
                     process_value = info.get("process", 0)
+                    print(f"get process: {process_value}")
                     yield process_value
                 elif "notice" in info:
                     st.write(info["notice"])

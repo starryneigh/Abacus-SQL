@@ -1,73 +1,31 @@
 import os
 import json
 import time
-import subprocess
-import requests
 import logging
-import sys
-import threading
-from flask import Flask, request, jsonify, Response, stream_with_context
+import zipfile
+from anyio import to_thread
+from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi import FastAPI, Request, Depends, UploadFile, HTTPException
 from transformers import AutoTokenizer
 from .utils.my_logger import MyLogger
 from .utils.prompt_gen import generate_prompt, construct_demos, construct_schemas
-from .utils.convert_data import get_table_and_question
 from .utils.stream_handler import StreamDataHandler
-from .murre import embd_tables, retrieve, score_data, construct_db_input
 from .utils.database import database_to_string
-from .fused import (
+from .Fused.fused import (
     pro_fused,
     merge_json_files_in_folder,
     extract_sqlite_metadata_from_folder,
 )
 from .utils.extract_from_sql import extract_sql_from_text, get_rationale
-from .dac import align, hallucinate, debug
+from .DAC.dac import align, hallucinate, debug
 from .utils.notice import send_notice
 from ..text.back import text_back
 from .utils.server_thread import UvicornServerThread
+from .utils.data import GenerateSQLRequest
+from .Murre.murre import murre_process
 
 
 logger = MyLogger("sserver", "logs/text2sql.log")
-
-
-def get_db_files(request, save_dir="./cache"):
-    if len(request.files) == 0:
-        return jsonify({"error": "No files uploaded"}), 400
-
-    files_dict = {}
-    for file_key in request.files:
-        file = request.files[file_key]
-        # 确保文件名不为空
-        if file.filename == "":
-            continue  # 忽略没有文件名的文件
-        file_save_path = os.path.join(save_dir, file_key + ".sqlite")
-        file.save(file_save_path)
-        files_dict[file_key] = file_save_path
-    logger.debug(f"Files saved: {files_dict}")
-    return files_dict
-
-
-def murre_process(user_question, db_map, cache_path="./cache"):
-    """
-    处理 SQL 数据生成的过程，包括检索和评分。
-    """
-    data_file = os.path.join(cache_path, "data.json")
-    get_table_and_question(data_file, cache_path)
-
-    tables_file = os.path.join(cache_path, "tables.json")
-    embd_path = os.path.join(cache_path, "embedding.json")
-    embd_tables(tables_file, embd_path)
-
-    retrieve_dir = os.path.join(cache_path, "retrieve", "turn0")
-    os.makedirs(retrieve_dir, exist_ok=True)
-    que_file = os.path.join(cache_path, "question.json")
-    retrieve_path = os.path.join(retrieve_dir, "retrieved.json")
-    retrieve(embd_path, que_file, retrieve_path)
-
-    score_path = os.path.join(cache_path, "scored.json")
-    score_data([retrieve_dir], score_path)
-
-    schema, cho_db = construct_db_input(score_path, user_question, db_map)
-    return cho_db
 
 
 def link_table(prompt_data, db_map, tokenizer, stream_handler, mode="ch"):
@@ -108,13 +66,11 @@ def link_table(prompt_data, db_map, tokenizer, stream_handler, mode="ch"):
     prompt_data["related_schema"] = schema_str
     return prompt_data
 
-
 def generate_response(
-    data: dict,
+    data: GenerateSQLRequest,
     stream_handler: StreamDataHandler,
     demos,
     demos_en,
-    cache_path: str = "./cache",
     tokenizer=None,
     demo_db_path: str = "./dataset/Spider/database",
     demo_db_path_en: str = "./dataset/Spider/database",
@@ -122,62 +78,30 @@ def generate_response(
     """
     生成响应流，通知用户进度并返回 SQL 预测结果。
     """
-
-    mode = data.get("mode", "ch")
-    model_name = data.get("model_name", "Qwen2.5-Coder_7b")
-    api_key = data.get("api_key", "None")
-    api_base = data.get("api_base", "None")
-    demo_flag = str_to_bool(data["demonstration"])
-    demo_num = int(data["demo_num"])
-    question_num = int(data["question_num"])
-    pre_generate_sql = str_to_bool(data["pre_generate_sql"])
-    self_debug = str_to_bool(data["self_debug"])
-    encore_flag = str_to_bool(data["encore"])
-    entity_debug = str_to_bool(data.get("entity_debug", "True"))
-    skeleton_debug = str_to_bool(data.get("skeleton_debug", "True"))
-    align_flag = str_to_bool(data.get("align_flag", "True"))
-
-    api_data = {
-        "model_name": model_name,
-        "api_key": api_key,
-        "api_base": api_base,
-    }
-
-    if mode == "zh":
-        mode = "ch"
-    print(mode)
-
-    context = text_back[mode]
-    demos_chose = demos if mode == "ch" else demos_en
-    demo_db_path_chose = demo_db_path if mode == "ch" else demo_db_path_en
-    
-    logger.info(
-        f"demo_flag: {demo_flag}, demo_num: {demo_num}, question_num: {question_num}, \
-        pre_generate_sql: {pre_generate_sql}, self_debug: {self_debug}, encore_flag: {encore_flag}, \
-        entity_debug: {entity_debug}, skeleton_debug: {skeleton_debug}, align_flag: {align_flag}"
-    )
+    context = text_back[data.mode]
+    demos_chose = demos if data.mode == "ch" else demos_en
+    demo_db_path_chose = demo_db_path if data.mode == "ch" else demo_db_path_en
 
     yield from send_notice(context["notice_find"])
-    db_map = data["db_id_path_map"]
     cho_db = murre_process(
-        user_question=data["user_question"],
-        db_map=db_map,
-        cache_path=cache_path,
+        user_question=data.question,
+        db_map=data.db_id_path_map,
+        cache_path=data.cache_path,
     )
 
     yield from send_notice(context["notice_find_success"].format(cho_db=cho_db))
     id_info_map = {}
-    for table in data["db_infos"]:
+    for table in data.db_infos:
         id_info_map[table["db_id"]] = table
     db_info = id_info_map[cho_db]
     prompt_data = {
-            "api_data": api_data,
-            "question": data["user_question"],
+            "api_data": data.api_data,
+            "question": data.question,
             "db_id": cho_db,
             "db_info": db_info,
-            "history": data["history"],
-            "db_infos": data["db_infos"],
-            "db_path": data["db_id_path_map"][cho_db],
+            "history": data.history,
+            "db_infos": data.db_infos,
+            "db_path": data.db_id_path_map[cho_db],
             "demo": [],
             "schema": "",
             "related_schema": "",
@@ -185,66 +109,64 @@ def generate_response(
             "alignment": {},
             "hallucination": "",
         }
-    if demo_flag:
-        if encore_flag:
+    if data.demonstration:
+        if data.encore:
             yield from send_notice(context["notice_use_encore"])
-            encore_file = os.path.join(cache_path, "demo.json")
+            encore_file = os.path.join(data.cache_path, "demo.json")
             prompt_data = construct_demos(
                 prompt_data,
                 demo_db_path_chose,
                 demos_chose,
-                question_num,
-                demo_num,
+                data.question_num,
+                data.demo_num,
                 encore_file,
-                mode=mode,
+                mode=data.mode,
             )
         else:
             # print("aaa")
             prompt_data = construct_demos(
-                prompt_data, demo_db_path_chose, demos_chose, question_num, demo_num, mode=mode
+                prompt_data, demo_db_path_chose, demos_chose, data.question_num, data.demo_num, mode=data.mode
             )
         # print(f"demo: {prompt_data[0]['demo']}")
-    prompt_data = construct_schemas(prompt_data, db_map)
+    prompt_data = construct_schemas(prompt_data, data.db_id_path_map)
 
     yield from send_notice(context["notice_presql"])
     try:
         prompt_data = link_table(
-            prompt_data, db_map, tokenizer, stream_handler, mode=mode
+            prompt_data, data.db_id_path_map, tokenizer, stream_handler, mode=data.mode
         )
     except Exception as e:
         err_dict = {"error": str(e)}
         print(f"err_dict: {err_dict}")
         yield f"data: {json.dumps(err_dict)}\n\n"
         return
-    if not pre_generate_sql:
+    if not data.pre_generate_sql:
         prompt_data["related_schema"] = prompt_data["schema"]
     
-    if align_flag or entity_debug:
+    if data.align_flag or data.entity_debug:
         yield from send_notice(context["notice_entity"])
-        prompt_data = align(prompt_data, stream_handler, tokenizer, mode=mode)
+        prompt_data = align(prompt_data, stream_handler, tokenizer, mode=data.mode)
 
-    if skeleton_debug:
+    if data.skeleton_debug:
         yield from send_notice(context["notice_sk"])
-        prompt_data = hallucinate(prompt_data, stream_handler, tokenizer, mode=mode)
+        prompt_data = hallucinate(prompt_data, stream_handler, tokenizer, mode=data.mode)
 
     yield from send_notice(context["notice_sql_gen"])
     prompt, messages = generate_prompt(
         prompt_data=prompt_data,
         tokenizer=tokenizer,
-        mode=mode,
+        mode=data.mode,
         demo_related=True,
         schema_related=True,
-        align_flag=align_flag,
+        align_flag=data.align_flag,
     )
     # print(f"prompt: {prompt}")
     api_data = {
         "prompt": [prompt],
         "messages": messages,
-        "api_key": api_key,
-        "api_base": api_base,
-        "model_name": model_name,
+        **data.api_data,
     }
-    yield from stream_handler.stream_data(api_data, data["db_infos"], cho_db=cho_db)
+    yield from stream_handler.stream_data(api_data, data.db_infos, cho_db=cho_db)
 
     prediction = stream_handler.get_prediction()
     prompt_data["rationale"] = get_rationale(prediction)
@@ -252,19 +174,59 @@ def generate_response(
     # chunk = {"rationale": prompt_data["rationale"]}
     # yield f"data: {json.dumps(chunk)}\n\n"
 
-    dump_prompt_path = os.path.join(cache_path, "prompt_data.json")
+    dump_prompt_path = os.path.join(data.cache_path, "prompt_data.json")
 
-    if self_debug:
+    if data.self_debug:
         yield from send_notice(context["notice_debug"])
-        yield from debug(prompt_data, prediction, stream_handler, tokenizer, entity_debug, skeleton_debug, mode=mode)
+        yield from debug(prompt_data, prediction, stream_handler, tokenizer, data.entity_debug, data.skeleton_debug, mode=data.mode)
     
-    dump_prompt_path = os.path.join(cache_path, "prompt_data.json")
+    dump_prompt_path = os.path.join(data.cache_path, "prompt_data.json")
     with open(dump_prompt_path, "w") as f:
         json.dump(prompt_data, f, indent=4, ensure_ascii=False)
 
+async def get_generate_sql_payload(request: Request) -> GenerateSQLRequest:
+    form_data = await request.form()
+    save_dir = form_data.get("cache_path", "./cache")
+    os.makedirs(save_dir, exist_ok=True)
 
-def str_to_bool(string):
-    return string.lower() == "true"
+    files_dict = {}
+    for key, value in form_data.items():
+        if value.__class__.__name__ == "UploadFile": 
+            file: UploadFile = value
+            if file.filename:
+                file_save_path = os.path.join(save_dir, key + ".sqlite")
+                try:
+                    contents = await file.read()
+                    with open(file_save_path, "wb") as f:
+                        f.write(contents)
+                    files_dict[key] = file_save_path
+                    logging.debug(f"File '{file.filename}' saved to: {file_save_path}")
+                except Exception as e:
+                    logging.error(f"Error saving file '{file.filename}': {e}")
+                    raise HTTPException(status_code=500, detail=f"Error saving file '{file.filename}': {str(e)}")
+            else:
+                logging.warning(f"Ignored file with empty filename for key: {key}")
+
+    data = GenerateSQLRequest(**form_data)
+    data.api_data = {
+        "model_name": data.model_name,
+        "api_key": data.api_key,
+        "api_base": data.api_base,
+    }
+    data.db_id_path_map = files_dict
+    if data.mode == "zh":
+        data.mode = "ch"
+    dump_path = os.path.join(data.cache_path, "data.json")
+    with open(dump_path, "w") as f:
+        json.dump(data.model_dump(), f, indent=4, ensure_ascii=False)
+    return data
+
+def safe_next(gen):
+    """包装next()调用，返回标记值代替抛出异常"""
+    try:
+        return next(gen)
+    except StopIteration:
+        return None  # 返回哨兵值
 
 def create_server_app(
     predict_url,
@@ -273,117 +235,127 @@ def create_server_app(
     cache_path="./cache",
     model_name_or_path="./model/Qwen/7b",
     demo_db_path="./dataset/Spider/database",
-    demo_db_path_en="./dataset/Spider/database",
+    demo_db_path_en="./dataset/Spider/database", 
 ):
-    app = Flask(__name__)
+    app = FastAPI()
     os.makedirs(cache_path, exist_ok=True)
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     stream_handler = StreamDataHandler(predict_url)
 
-    @app.route("/generate_sql", methods=["POST"])
-    def generate_sql():
-        try:
-            user_question = request.form["question"]
-            history = json.loads(request.form["history"])
-            prompts_user = json.loads(request.form["prompts_user"])
-            db_infos = json.loads(request.form["db_infos"])
-            cache_path = request.form.get("cache_path")
-            logger.debug(f"cache_path: {cache_path}")
-            os.makedirs(cache_path, exist_ok=True)
-            db_file = get_db_files(request, cache_path)
-
-            data = {
-                "user_question": user_question,
-                "history": history,
-                "db_id_path_map": db_file,
-                "prompts_user": prompts_user,
-                "db_infos": db_infos,
-                "cache_path": cache_path,
-                "demonstration": request.form.get("demonstration", "False"),
-                "demo_num": request.form.get("demo_num", 5),
-                "question_num": request.form.get("question_num", 5),
-                "pre_generate_sql": request.form.get("pre_generate_sql", "False"),
-                "self_debug": request.form.get("self_debug", "False"),
-                "encore": request.form.get("encore"),
-                "entity_debug": request.form.get("entity_debug", "True"),
-                "skeleton_debug": request.form.get("skeleton_debug", "True"),
-                "align_flag": request.form.get("align_flag", "True"),
-                "mode": request.form.get("mode", "ch"),
-                "model_name": request.form.get("model_name", "Qwen2.5-Coder_7b"),
-                "api_key": request.form.get("api_key", "None"),
-                "api_base": request.form.get("api_base", "None"),
-            }
-
-            dump_path = os.path.join(cache_path, "data.json")
-            with open(dump_path, "w") as f:
-                json.dump(data, f)
-
-            return Response(
-                stream_with_context(
-                    generate_response(
-                        data,
-                        stream_handler,
-                        demos,
-                        demos_en,
-                        cache_path,
-                        tokenizer,
-                        demo_db_path,
-                        demo_db_path_en,
-                    )
-                ),
-                content_type="text/event-stream",
+    @app.post("/generate_sql")
+    async def generate_sql(payload: GenerateSQLRequest = Depends(get_generate_sql_payload)):
+        """
+        生成 SQL 的接口。接收用户问题、历史记录、数据库信息等，
+        使用 GenerateSQLRequest 数据类接收请求的 form 数据。
+        """
+        async def event_stream():
+            sync_generator = generate_response(
+                payload,
+                stream_handler,
+                demos=demos,
+                demos_en=demos_en,
+                tokenizer=tokenizer,
+                demo_db_path=demo_db_path,
+                demo_db_path_en=demo_db_path_en
             )
+            try:
+                while True:
+                    try:
+                        content = await to_thread.run_sync(
+                            lambda: safe_next(sync_generator),
+                            abandon_on_cancel=True
+                        )
+                        if content == None:
+                            break
+                        yield content
+                    except Exception as e:
+                        logging.error(f"Generator error: {e}")
+                        break
+            finally:
+                if hasattr(sync_generator, "close"):
+                    sync_generator.close()
 
-        except Exception as e:
-            logger.error(f"Error in /generate_sql: {e}")
-            return jsonify({"error": str(e)}), 500
+        return StreamingResponse(event_stream(), media_type="text/event-stream")
 
-    @app.route("/encore", methods=["POST"])
-    def encore():
-        import zipfile
-
+    @app.post("/encore")
+    async def encore(request: Request):
+        """
+        处理上传的 ZIP 文件，并进行后续处理 (流式响应)。
+        """
         try:
-            uploaded_file = request.files["file"]
-            logger.info(f"uploaded_file: {uploaded_file}")
-            cache_path = request.form.get("cache_path")
-            mode = request.form.get("mode", "ch")
+            form_data = await request.form()
+            file = form_data.get("file")
+            cache_path = form_data.get("cache_path")
+            mode = form_data.get("mode", "ch")
             if mode == "zh":
                 mode = "ch"
             context = text_back[mode]
-            logger.info(f"cache_path: {cache_path}")
+            logging.info(f"cache_path: {cache_path}")
             # 定义保存路径
             save_path = os.path.join(cache_path, "fused/")
             os.makedirs(save_path, exist_ok=True)
             file_path = os.path.join(save_path, "uploaded.zip")
-            # 保存上传的ZIP文件
-            uploaded_file.save(file_path)
+            # 保存上传的 ZIP 文件
+            with open(file_path, "wb") as f:
+                content = await file.read()  # 使用 await 读取文件内容
+                f.write(content)
         except Exception as e:
-            return jsonify({"error": str(e)}), 400
-        # 解压缩ZIP文件
+            return JSONResponse({"error": str(e)}, status_code=400)
+        # 解压缩 ZIP 文件
         try:
             with zipfile.ZipFile(file_path, "r") as zip_ref:
                 zip_ref.extractall(save_path)
         except zipfile.BadZipFile:
-            return "Error: Bad ZIP file", 400
+            return JSONResponse({"error": "Error: Bad ZIP file"}, status_code=400)
 
-        def gen_encore_response():
+        async def async_gen_encore_response():
+            # 初始化路径（同步操作）
             to_fused_path = os.path.join(save_path, "to_fused.json")
             cache_fused_path = os.path.join(save_path, "fused/")
-            encoder_name_or_path = "./model/SGPT/125m"
             table_path = os.path.join(save_path, "tables", "tables.json")
             database_path = os.path.join(save_path, "database")
 
+            # 同步操作封装到线程池
             merge_json_files_in_folder(save_path, to_fused_path, recursive=False)
             os.makedirs(os.path.dirname(table_path), exist_ok=True)
+            
             tables = extract_sqlite_metadata_from_folder(save_path)
             with open(table_path, "w", encoding="utf-8") as f:
                 json.dump(tables, f, indent=4, ensure_ascii=False)
 
+            # 处理同步生成器流式输出
+            sync_gen = gen_encore_stream(
+                to_fused_path, 
+                cache_fused_path,
+                table_path,
+                database_path
+            )
+            
+            try:
+                while True:
+                    try:
+                        content = await to_thread.run_sync(
+                            lambda: safe_next(sync_gen),
+                            abandon_on_cancel=True
+                        )
+                        if content is None:
+                            break
+                        yield content
+                    except Exception as e:
+                        logging.error(f"Generator error: {e}")
+                        break
+            finally:
+                if hasattr(sync_gen, "close"):
+                    sync_gen.close()
+
+        def gen_encore_stream(to_fused_path, cache_fused_path, table_path, database_path):
+            """同步生成器核心逻辑（保持原样）"""
             yield from send_notice(context["notice_encore_init"])
+            
             yield from pro_fused(
                 to_fused_path=to_fused_path,
                 cache_path=cache_fused_path,
-                encoder_name_or_path=encoder_name_or_path,
+                encoder_name_or_path=os.getenv("ENCODER_NAME_OR_PATH", "./model/SGPT/125m"),
                 table_path=table_path,
                 database_path=database_path,
                 stream_handler=stream_handler,
@@ -391,18 +363,18 @@ def create_server_app(
                 num_turn=2,
                 cluster_number=4,
             )
+            
             yield from send_notice(context["notice_encore_success"])
-        
+
         try:
-            return Response(
-                stream_with_context(gen_encore_response()),
-                content_type="text/event-stream",
+            return StreamingResponse(
+                async_gen_encore_response(),
+                media_type="text/event-stream"
             )
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
-
+            logging.error(f"Endpoint error: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
     return app
-
 
 def start_server(
     predict_url,
@@ -424,10 +396,9 @@ def start_server(
         demo_db_path=demo_db_path,
         demo_db_path_en=demo_db_path_en,
     )
-    server_thread = threading.Thread(target=app.run, kwargs={"host": host, "port": flask_port})
+    server_thread = UvicornServerThread(app, host, flask_port)
     server_thread.start()
     return server_thread
-
 
 def parser():
     import argparse

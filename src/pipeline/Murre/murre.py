@@ -8,16 +8,17 @@ import requests
 from typing import List, Dict, Any, Tuple
 from transformers import AutoModel, AutoTokenizer
 from copy import deepcopy
-from .utils.my_logger import MyLogger
+from ..utils.my_logger import MyLogger
 from collections import Counter
+from ..utils.convert_data import get_table_and_question
 
 logger = MyLogger("murre", "logs/text2sql.log")
 
-model_path = os.getenv("SGPT_MODEL_NAME_OR_PATH", "./model/SGPT/125m")
-logger.info(f"Loading model from {model_path}")
+model_path = os.getenv("ENCODER_NAME_OR_PATH", "./model/SGPT/125m")
+logger.info(f"Loading encoding_model from {model_path}")
 model = AutoModel.from_pretrained(model_path)
 tokenizer = AutoTokenizer.from_pretrained(model_path)
-logger.info("Model loaded")
+logger.info("Encoding Model loaded")
 
 
 def init(model_path: str):
@@ -31,21 +32,21 @@ def init(model_path: str):
 
 
 def embd_tables(docs_file, embd_doc_path: str) -> List[Dict[str, Any]]:
-    from .Murre.embd import open_docs_file, embd_docs
+    from .embd import open_docs_file, embd_docs
 
-    logger.info("\nEmbedding tables")
+    logger.info("Embedding tables")
 
     doc_embeddings_file = embd_doc_path
-    logger.info(f"Embedding docs in {docs_file} to {doc_embeddings_file}")
+    logger.debug(f"Embedding docs in {docs_file} to {doc_embeddings_file}")
     docs = open_docs_file(docs_file)
     doc_embeddings_json = embd_docs(model, tokenizer, docs)
     # print_debug(doc_embeddings_json=doc_embeddings_json[0])
 
-    logger.info(f"Saving embeddings to {doc_embeddings_file}")
+    logger.debug(f"Saving embeddings to {doc_embeddings_file}")
     with open(doc_embeddings_file, "w", encoding="utf-8") as f:
         json.dump(doc_embeddings_json, f, ensure_ascii=False, indent=4)
 
-    logger.info("Embedding done\n")
+    logger.info("Embedding done")
     return doc_embeddings_json
 
 
@@ -56,13 +57,13 @@ def retrieve(
     top_k: List[int] = [5],
     last_retrieved_file: str = None,
 ):
-    from .Murre.embd import (
+    from .embd import (
         embd_query,
         calculate_single_similarity,
         construct_retrieved_data,
     )
 
-    logger.info("\nRetrieving")
+    logger.info("Retrieving")
 
     with open(doc_embeddings, "r", encoding="utf-8") as f:
         doc_embeddings_json = json.load(f)
@@ -70,7 +71,7 @@ def retrieve(
     # last_retrieved_file = args.last_retrieved_file
     retrieved_file = retri_dump_path
 
-    logger.info(f"Retrieving from {queries_file} to {retrieved_file}")
+    logger.debug(f"Retrieving from {queries_file} to {retrieved_file}")
     with open(queries_file, "r", encoding="utf-8") as f:
         data = json.load(f)
     queries = [d["utterance"].split("\n") for d in data]
@@ -124,10 +125,10 @@ def retrieve(
         schema_map=schema_map if last_retrieved_file else None,
     )
 
-    logger.info(f"Saving retrieved data to {retrieved_file}")
+    logger.debug(f"Saving retrieved data to {retrieved_file}")
     with open(retrieved_file, "w", encoding="utf-8") as f:
         json.dump(retrieved_data, f, indent=4, ensure_ascii=False)
-    logger.info("Retrieval done\n")
+    logger.info("Retrieval done")
 
 
 def score_data(
@@ -135,9 +136,10 @@ def score_data(
     dump_path: str,
     top_k: List[int] = [5],
 ):
-    from .Murre.rewrite_fuc import find_json_files, pos, judge_stop
+    from .rewrite_fuc import find_json_files, pos, judge_stop
 
-    logger.info(f"Scoring from {retrieved_paths} to {dump_path}")
+    logger.info("Scoring data")
+    logger.debug(f"Scoring from {retrieved_paths} to {dump_path}")
 
     num_turns = len(retrieved_paths)
     # print(num_turns)
@@ -230,14 +232,14 @@ def score_data(
         retrieved_data[0][0][si]["retrieved"] = retrieved
         # retrieved_data[0][0][si]["recall"] = compute_recall_multiple(args.top_k, [x['schema'] for x in retrieved], retrieved_data[0][0][si]['gold'])
 
-    logger.info(f"Saving scored data to {dump_path}\n")
+    logger.debug(f"Saving scored data to {dump_path}\n")
     os.makedirs(os.path.dirname(dump_path), exist_ok=True)
     with open(dump_path, "w", encoding="utf-8") as f:
         json.dump(retrieved_data[0][0], f, ensure_ascii=False, indent=4)
 
 
 def infer_sql(query_path: str, tables_file: str, top_k: int = 5):
-    from .Murre.rewrite_fuc import construct_tables_input
+    from .rewrite_fuc import construct_tables_input
 
     print("\nInfering")
 
@@ -259,8 +261,8 @@ def infer_sql(query_path: str, tables_file: str, top_k: int = 5):
 
 
 def construct_db_input(query_path: str, question, db_map, top_k: int = 5):
-    from .Murre.rewrite_fuc import extract_db_names
-    from .utils.database import database_to_string
+    from .rewrite_fuc import extract_db_names
+    from ..utils.database import database_to_string
 
     with open(query_path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -274,6 +276,29 @@ def construct_db_input(query_path: str, question, db_map, top_k: int = 5):
     schema = database_to_string(db_file, question=question)
     # print(data[0]["input"])
     return schema, cho_db
+
+def murre_process(user_question, db_map, cache_path="./cache"):
+    """
+    处理 SQL 数据生成的过程，包括检索和评分。
+    """
+    data_file = os.path.join(cache_path, "data.json")
+    get_table_and_question(data_file, cache_path)
+
+    tables_file = os.path.join(cache_path, "tables.json")
+    embd_path = os.path.join(cache_path, "embedding.json")
+    embd_tables(tables_file, embd_path)
+
+    retrieve_dir = os.path.join(cache_path, "retrieve", "turn0")
+    os.makedirs(retrieve_dir, exist_ok=True)
+    que_file = os.path.join(cache_path, "question.json")
+    retrieve_path = os.path.join(retrieve_dir, "retrieved.json")
+    retrieve(embd_path, que_file, retrieve_path)
+
+    score_path = os.path.join(cache_path, "scored.json")
+    score_data([retrieve_dir], score_path)
+
+    schema, cho_db = construct_db_input(score_path, user_question, db_map)
+    return cho_db
 
 
 if __name__ == "__main__":

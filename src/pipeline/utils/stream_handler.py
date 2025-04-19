@@ -23,7 +23,7 @@ class StreamDataHandler:
         :param config: 配置信息
         :return: 生成的预测结果
         """
-        logger.info(f"Generating data with LLM: {source}")
+        logger.debug(f"Generating data with LLM: {source}")
         if api_data:
             model_name = api_data.get("model_name", "Qwen")
         else:
@@ -89,7 +89,7 @@ class StreamDataHandler:
         :param files: 可选，上传的文件信息
         :yield: 服务器返回的流数据，格式为 JSON
         """
-        logger.info(f"Sending data to server: {data}")
+        logger.debug(f"Sending data to server: {data}")
         model_name = data.get("model_name", "Qwen")
         print(f"model_name: {model_name}")
         try:
