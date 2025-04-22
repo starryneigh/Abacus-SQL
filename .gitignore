@@ -24,6 +24,7 @@ model/SGPT/**
 logs/
 cache/
 dump/
+statistic/
 
 _secret_auth_.json
 
