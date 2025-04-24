@@ -303,7 +303,7 @@ def remove_data(folder_path: str):
     except OSError as e:
         print(f"删除文件夹 {folder_path} 失败: {e}")
 
-cache_path = "cache"
+cache_path = os.getenv("CACHE_PATH", "cache")
 def get_save_dir(user=True, chat=True):
     if user:
         if chat:
@@ -313,6 +313,8 @@ def get_save_dir(user=True, chat=True):
             save_dir = os.path.join(cache_path, st.session_state["username"])
     else:
         save_dir = cache_path
+    if os.name == 'nt':
+        save_dir = save_dir.replace("\\", "/")
     return save_dir
 
 def filename_correction(filename: str) -> str:
